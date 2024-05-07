@@ -100,13 +100,37 @@ export default class TasksController {
     const tag = await Tag.query().where("id", tagId).first();
 
     if (!task)
-      return response.status(404).json({ message: "Task does not exist" });
+      return response.status(404).json({ error: "Task does not exist" });
     if (!tag)
-      return response.status(404).json({ message: "This tag does not exist" });
+      return response.status(404).json({ error: "This tag does not exist" });
+    if (await tag!.related("tasks").query().first())
+      return response.status(400).json({ error: "Tag already added to task" });
 
     await task.related("tags").attach([tagId]);
     return response
       .status(200)
       .json({ message: `${tag.name} added to ${task.title}` });
+  }
+
+  public async removeTag({ request, response }: HttpContextContract) {
+    const task = await Task.query().where("id", request.param("id")).first();
+    const { tagId } = request.only(["tagId"]);
+    const tag = await Tag.query().where("id", tagId).first();
+
+    //console.log(await tag!.related("tasks").query());
+
+    if (!task)
+      return response.status(404).json({ error: "Task does not exist" });
+    if (!tag)
+      return response.status(404).json({ error: "This tag does not exist" });
+    if (!(await tag!.related("tasks").query().first()))
+      return response
+        .status(400)
+        .json({ error: "Tag already removed from task" });
+
+    await task.related("tags").detach([tagId]);
+    return response
+      .status(200)
+      .json({ message: `${tag.name} removed from ${task.title}` });
   }
 }
