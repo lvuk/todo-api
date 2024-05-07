@@ -26,6 +26,8 @@ Route.get("/", async () => {
 
 Route.group(() => {
   Route.resource("tasks", "TasksController").apiOnly();
+  Route.post("/tasks/:id/add-tag", "TasksController.addTag").as("add-tag");
+  Route.resource("tags", "TagsController").apiOnly();
 })
   .as("app")
   .prefix("/api");

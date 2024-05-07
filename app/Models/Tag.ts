@@ -5,17 +5,14 @@ import {
   column,
   manyToMany,
 } from "@ioc:Adonis/Lucid/Orm";
-import Tag from "./Tag";
+import Task from "./Task";
 
-export default class Task extends BaseModel {
+export default class Tag extends BaseModel {
   @column({ isPrimary: true })
   public id: number;
 
   @column()
-  public title: string;
-
-  @column()
-  public description: string;
+  public name: string;
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime;
@@ -23,6 +20,6 @@ export default class Task extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   public updatedAt: DateTime;
 
-  @manyToMany(() => Tag)
-  public tags: ManyToMany<typeof Tag>;
+  @manyToMany(() => Task)
+  public tasks: ManyToMany<typeof Task>;
 }

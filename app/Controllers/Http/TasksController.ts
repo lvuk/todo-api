@@ -1,11 +1,13 @@
 import type { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import { schema, rules } from "@ioc:Adonis/Core/Validator";
+import Tag from "App/Models/Tag";
 import Task from "App/Models/Task";
-import { reporters } from "tests/bootstrap";
 
 export default class TasksController {
   public async index({ request, response }: HttpContextContract) {
-    const tasks = await Task.query();
+    const page = request.input("page", 1);
+    const limit = 1;
+    const tasks = await Task.query().preload("tags").paginate(page, limit);
 
     if (tasks.length === 0) {
       return response.status(404).json({ error: "Tasks not found" });
@@ -34,7 +36,10 @@ export default class TasksController {
   }
 
   public async show({ request, response }: HttpContextContract) {
-    const task = await Task.query().where("id", request.param("id")).first();
+    const task = await Task.query()
+      .where("id", request.param("id"))
+      .preload("tags")
+      .first();
 
     if (!task) {
       return response.status(404).json({ error: "Task not found" });
@@ -76,7 +81,10 @@ export default class TasksController {
   }
 
   public async destroy({ request, response }: HttpContextContract) {
-    const task = await Task.query().where("id", request.param("id")).first();
+    const task = await Task.query()
+      .where("id", request.param("id"))
+      .preload("tags")
+      .first();
 
     if (!task) {
       return response.status(404).json({ error: "Taks does not exists" });
@@ -84,5 +92,21 @@ export default class TasksController {
 
     await task.delete();
     return response.json({ message: "Task successfully deleted" });
+  }
+
+  public async addTag({ request, response }: HttpContextContract) {
+    const task = await Task.query().where("id", request.param("id")).first();
+    const { tagId } = request.only(["tagId"]);
+    const tag = await Tag.query().where("id", tagId).first();
+
+    if (!task)
+      return response.status(404).json({ message: "Task does not exist" });
+    if (!tag)
+      return response.status(404).json({ message: "This tag does not exist" });
+
+    await task.related("tags").attach([tagId]);
+    return response
+      .status(200)
+      .json({ message: `${tag.name} added to ${task.title}` });
   }
 }
