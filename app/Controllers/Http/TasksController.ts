@@ -5,9 +5,18 @@ import Task from "App/Models/Task";
 
 export default class TasksController {
   public async index({ request, response }: HttpContextContract) {
+    const filter = request.input("tag");
     const page = request.input("page", 1);
     const limit = 1;
-    const tasks = await Task.query().preload("tags").paginate(page, limit);
+    var tasks: Array<Task> = [];
+
+    if (!filter) {
+      tasks = await Task.query().preload("tags"); //.paginate(page, limit);
+    } else {
+      const tag = await Tag.query().where("name", filter).first();
+      console.log(tag);
+      tasks = await tag!.related("tasks").query();
+    }
 
     if (tasks.length === 0) {
       return response.status(404).json({ error: "Tasks not found" });
@@ -97,33 +106,47 @@ export default class TasksController {
   public async addTag({ request, response }: HttpContextContract) {
     const task = await Task.query().where("id", request.param("id")).first();
     const { tagId } = request.only(["tagId"]);
-    const tag = await Tag.query().where("id", tagId).first();
+    const reqTag = await Tag.query().where("id", tagId).first();
+    var hasTag = false;
 
     if (!task)
       return response.status(404).json({ error: "Task does not exist" });
-    if (!tag)
+    if (!reqTag)
       return response.status(404).json({ error: "This tag does not exist" });
-    if (await tag!.related("tasks").query().first())
+    const tags = await task!.related("tags").query();
+    //console.log(tags);
+    tags.forEach((tag) => {
+      if (tag.id === reqTag.id) hasTag = true;
+    });
+
+    if (hasTag)
       return response.status(400).json({ error: "Tag already added to task" });
 
     await task.related("tags").attach([tagId]);
     return response
       .status(200)
-      .json({ message: `${tag.name} added to ${task.title}` });
+      .json({ message: `${reqTag.name} added to ${task.title}` });
   }
 
   public async removeTag({ request, response }: HttpContextContract) {
     const task = await Task.query().where("id", request.param("id")).first();
     const { tagId } = request.only(["tagId"]);
-    const tag = await Tag.query().where("id", tagId).first();
+    const reqTag = await Tag.query().where("id", tagId).first();
+    var hasTag = false;
 
     //console.log(await tag!.related("tasks").query());
 
     if (!task)
       return response.status(404).json({ error: "Task does not exist" });
-    if (!tag)
+    if (!reqTag)
       return response.status(404).json({ error: "This tag does not exist" });
-    if (!(await tag!.related("tasks").query().first()))
+    const tags = await task!.related("tags").query();
+    console.log(tags);
+    tags.forEach((tag) => {
+      if (tag.id === reqTag.id) hasTag = true;
+    });
+
+    if (!hasTag)
       return response
         .status(400)
         .json({ error: "Tag already removed from task" });
@@ -131,6 +154,6 @@ export default class TasksController {
     await task.related("tags").detach([tagId]);
     return response
       .status(200)
-      .json({ message: `${tag.name} removed from ${task.title}` });
+      .json({ message: `${reqTag.name} removed from ${task.title}` });
   }
 }
